@@ -6,18 +6,36 @@ import LogoUploader from './components/LogoUploader';
 import LeadDashboard from './components/LeadDashboard';
 import PromoterView from './components/PromoterView';
 import SalesVerifier from './components/SalesVerifier';
+import LoginPage from './components/LoginPage';
 
 const App: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<UserRole>('LEAD');
+  const [isLeadAuthenticated, setIsLeadAuthenticated] = useState(false);
+  
   // For demo, we just pick the first promoter as the logged in one if role is PROMOTER
   const [currentPromoterId, setCurrentPromoterId] = useState<string>('p1');
   
   const promoters = getPromoters();
   const activePromoter = promoters.find(p => p.id === currentPromoterId) || promoters[0];
 
+  const handleLeadLogin = () => {
+    setIsLeadAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsLeadAuthenticated(false);
+    // Optionally reset to a safe state or stay on current page to show login
+    if (currentRole === 'LEAD') {
+      // Stay on LEAD to show login form
+    }
+  };
+
   const renderContent = () => {
     switch (currentRole) {
       case 'LEAD':
+        if (!isLeadAuthenticated) {
+          return <LoginPage onLogin={handleLeadLogin} />;
+        }
         return <LeadDashboard />;
       case 'PROMOTER':
         return <PromoterView promoter={activePromoter} />;
@@ -33,6 +51,13 @@ const App: React.FC = () => {
     { role: 'PROMOTER', label: 'Brand Promoter', icon: Users },
     { role: 'VERIFIER', label: 'Sales Concern', icon: CheckCircle },
   ];
+
+  const getSubHeaderText = () => {
+    if (currentRole === 'LEAD' && !isLeadAuthenticated) return 'Please verify your identity.';
+    if (currentRole === 'PROMOTER') return 'Track your sales and performance.';
+    if (currentRole === 'VERIFIER') return 'Verify incoming sales entries.';
+    return 'Welcome back, verified user.';
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -65,7 +90,7 @@ const App: React.FC = () => {
 
         {currentRole === 'PROMOTER' && (
            <div className="p-4 bg-slate-800/50 border-t border-slate-800">
-             <label className="block text-xs font-medium text-slate-400 mb-2">Simulate Promoter:</label>
+             <label className="block text-xs font-medium text-slate-400 mb-2">Select BP:</label>
              <select 
                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-indigo-500"
                value={currentPromoterId}
@@ -77,7 +102,10 @@ const App: React.FC = () => {
         )}
 
         <div className="p-4 border-t border-slate-800">
-          <button className="flex items-center space-x-2 text-slate-400 hover:text-white transition-colors text-sm">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-2 text-slate-400 hover:text-white transition-colors text-sm"
+          >
             <LogOut size={16} />
             <span>Logout</span>
           </button>
@@ -105,14 +133,18 @@ const App: React.FC = () => {
              <h2 className="text-xl font-bold text-slate-800">
                {navItems.find(i => i.role === currentRole)?.label} Dashboard
              </h2>
-             <p className="text-sm text-slate-500">Welcome back, verified user.</p>
+             <p className="text-sm text-slate-500">{getSubHeaderText()}</p>
            </div>
-           <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
+           <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm transition-colors ${
+             currentRole === 'LEAD' && !isLeadAuthenticated 
+              ? 'bg-slate-200 text-slate-500' 
+              : 'bg-indigo-100 text-indigo-700'
+           }`}>
               {currentRole[0]}
            </div>
         </header>
 
-        <div className="p-2 md:p-6">
+        <div className="p-2 md:p-6 min-h-[calc(100vh-80px)]">
           {renderContent()}
         </div>
       </main>

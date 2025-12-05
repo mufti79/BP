@@ -24,6 +24,7 @@ export interface SaleRecord {
   id: string;
   promoterId: string;
   promoterName: string;
+  uniqueCode?: string; // Unique identifier for easy verification (Name + Mobile)
   customer: CustomerData;
   items: {
     [key in TicketType]?: number;
