@@ -3,9 +3,17 @@ import { Lock, User, ArrowRight, ShieldCheck, Info } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: () => void;
+  title?: string;
+  subtitle?: string;
+  demoCredentials?: string;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ 
+  onLogin, 
+  title = "Team Lead Access", 
+  subtitle = "Secure dashboard for authorized personnel only.",
+  demoCredentials = "admin / admin"
+}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,11 +26,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     
     // Simulate network request
     setTimeout(() => {
-      // Mock authentication (accepts admin/admin)
-      if (email.toLowerCase() === 'admin' && password === 'admin') {
+      const user = email.toLowerCase().trim();
+      const pass = password.trim();
+
+      // Mock authentication
+      // Admin access
+      if (user === 'admin' && pass === 'admin') {
         onLogin();
-      } else {
-        setError('Invalid credentials. Hint: admin/admin');
+      } 
+      // User access (e.g. for Customer Service)
+      else if (user === 'user' && pass === 'password') {
+        onLogin();
+      }
+      else {
+        setError(`Invalid credentials. Try: ${demoCredentials}`);
         setIsLoading(false);
       }
     }, 800);
@@ -38,8 +55,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           <div className="bg-indigo-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 shadow-inner">
             <ShieldCheck size={40} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800">Team Lead Access</h2>
-          <p className="text-slate-500 mt-2 text-sm">Secure dashboard for authorized personnel only.</p>
+          <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
+          <p className="text-slate-500 mt-2 text-sm">{subtitle}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -86,7 +103,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
             ) : (
                <>
-                 Access Dashboard
+                 Login
                  <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                </>
             )}
@@ -96,7 +113,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
                 <Info size={14} className="text-indigo-500" />
-                <span>Demo Access: <strong>admin</strong> / <strong>admin</strong></span>
+                <span>Demo Access: <strong>{demoCredentials}</strong></span>
             </div>
         </div>
       </div>

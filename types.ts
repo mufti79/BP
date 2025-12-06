@@ -45,7 +45,7 @@ export interface Floor {
   name: string;
 }
 
-export type UserRole = 'LEAD' | 'PROMOTER' | 'VERIFIER';
+export type UserRole = 'LEAD' | 'PROMOTER' | 'VERIFIER' | 'CUSTOMER_SERVICE';
 
 // KPI Aggregation Type
 export interface KPIStats {
@@ -57,4 +57,31 @@ export interface KPIStats {
   totalSalesLeads: number; // Count of records
   totalMailCollect: number; // Count of records with email
   revenue: number;
+}
+
+// Complaint Related Types
+export enum ComplaintPriority {
+  LOW = 'Low',
+  MEDIUM = 'Medium',
+  HIGH = 'High',
+}
+
+export enum ComplaintStatus {
+  OPEN = 'Open',
+  IN_PROGRESS = 'In Progress',
+  RESOLVED = 'Resolved',
+}
+
+export interface ComplaintRecord {
+  id: string;
+  timestamp: number;
+  customerName: string;
+  customerMobile: string;
+  description: string;
+  priority: ComplaintPriority;
+  status: ComplaintStatus;
+  submittedBy: string; // 'Customer Service' or 'Team Lead'
+  resolutionNotes?: string;
+  resolvedAt?: number;
+  attachmentUrl?: string; // Data URL for uploaded file
 }

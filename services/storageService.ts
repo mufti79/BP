@@ -1,4 +1,4 @@
-import { Promoter, SaleRecord, SaleStatus, TicketType, Floor } from '../types';
+import { Promoter, SaleRecord, SaleStatus, TicketType, Floor, ComplaintRecord } from '../types';
 
 // Mock Initial Data
 const INITIAL_PROMOTERS: Promoter[] = [
@@ -15,12 +15,14 @@ const INITIAL_FLOORS: Floor[] = [
 ];
 
 const INITIAL_SALES: SaleRecord[] = [];
+const INITIAL_COMPLAINTS: ComplaintRecord[] = [];
 
 const STORAGE_KEYS = {
   PROMOTERS: 'pp_promoters',
   SALES: 'pp_sales',
   LOGO: 'pp_logo_url',
   FLOORS: 'pp_floors',
+  COMPLAINTS: 'pp_complaints',
 };
 
 export const getPromoters = (): Promoter[] => {
@@ -68,6 +70,28 @@ export const updateSaleStatus = (saleId: string, status: SaleStatus) => {
   if (index !== -1) {
     sales[index].status = status;
     localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
+  }
+};
+
+// --- Complaints Service ---
+
+export const getComplaints = (): ComplaintRecord[] => {
+  const data = localStorage.getItem(STORAGE_KEYS.COMPLAINTS);
+  return data ? JSON.parse(data) : INITIAL_COMPLAINTS;
+};
+
+export const addComplaint = (complaint: ComplaintRecord) => {
+  const complaints = getComplaints();
+  complaints.push(complaint);
+  localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
+};
+
+export const updateComplaint = (updatedComplaint: ComplaintRecord) => {
+  const complaints = getComplaints();
+  const index = complaints.findIndex(c => c.id === updatedComplaint.id);
+  if (index !== -1) {
+    complaints[index] = updatedComplaint;
+    localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
   }
 };
 

@@ -156,7 +156,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
     <div className="max-w-4xl mx-auto p-6 pb-20">
       <div className="bg-indigo-900 text-white rounded-2xl p-6 mb-8 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-        <h2 className="text-2xl font-bold relative z-10">Hello, {promoter.name}</h2>
+        <h2 className="text-2xl font-bold relative z-10">{promoter.name}</h2>
         <div className="flex items-center mt-2 text-indigo-200 relative z-10">
           <MapPin size={16} className="mr-2 flex-shrink-0" />
           <span className="truncate">{assignedLocations}</span>
@@ -203,7 +203,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                     value={customer.name}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                    placeholder="John Doe"
+                    placeholder="Mufti Mahmud"
                     />
                 </div>
                 <div>
@@ -226,7 +226,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                     value={customer.mobile}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="+1 234..."
+                    placeholder="+880 1XXX..."
                     />
                 </div>
                 <div>
@@ -238,11 +238,11 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                     value={customer.email}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="john@example.com"
+                    placeholder="mufti@example.com"
                     />
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Location (Source)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
                     <input
                     required
                     type="text"
@@ -250,7 +250,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                     value={customer.location}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="e.g. Downtown Mall Entrance"
+                    placeholder="Shymoli"
                     />
                 </div>
                 </div>

@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, CheckCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, CheckCircle, LogOut, Headphones } from 'lucide-react';
 import { UserRole } from './types';
 import { getPromoters } from './services/storageService';
 import LogoUploader from './components/LogoUploader';
 import LeadDashboard from './components/LeadDashboard';
 import PromoterView from './components/PromoterView';
 import SalesVerifier from './components/SalesVerifier';
+import CustomerServiceView from './components/CustomerServiceView';
 import LoginPage from './components/LoginPage';
 
 const App: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<UserRole>('LEAD');
   const [isLeadAuthenticated, setIsLeadAuthenticated] = useState(false);
+  const [isCSAuthenticated, setIsCSAuthenticated] = useState(false);
   
   // For demo, we just pick the first promoter as the logged in one if role is PROMOTER
   const [currentPromoterId, setCurrentPromoterId] = useState<string>('p1');
@@ -21,26 +23,32 @@ const App: React.FC = () => {
   const handleLeadLogin = () => {
     setIsLeadAuthenticated(true);
   };
+  
+  const handleCSLogin = () => {
+    setIsCSAuthenticated(true);
+  };
 
   const handleLogout = () => {
-    setIsLeadAuthenticated(false);
-    // Optionally reset to a safe state or stay on current page to show login
-    if (currentRole === 'LEAD') {
-      // Stay on LEAD to show login form
-    }
+    if (currentRole === 'LEAD') setIsLeadAuthenticated(false);
+    if (currentRole === 'CUSTOMER_SERVICE') setIsCSAuthenticated(false);
   };
 
   const renderContent = () => {
     switch (currentRole) {
       case 'LEAD':
         if (!isLeadAuthenticated) {
-          return <LoginPage onLogin={handleLeadLogin} />;
+          return <LoginPage onLogin={handleLeadLogin} title="Team Lead Access" subtitle="Secure dashboard for Operations Management." demoCredentials="admin / admin" />;
         }
         return <LeadDashboard />;
       case 'PROMOTER':
         return <PromoterView promoter={activePromoter} />;
       case 'VERIFIER':
         return <SalesVerifier />;
+      case 'CUSTOMER_SERVICE':
+        if (!isCSAuthenticated) {
+            return <LoginPage onLogin={handleCSLogin} title="Customer Service Access" subtitle="Please login to access the Complaint Portal." demoCredentials="user / password" />;
+        }
+        return <CustomerServiceView />;
       default:
         return <div>Select a role</div>;
     }
@@ -50,12 +58,15 @@ const App: React.FC = () => {
     { role: 'LEAD', label: 'Team Lead', icon: LayoutDashboard },
     { role: 'PROMOTER', label: 'Brand Promoter', icon: Users },
     { role: 'VERIFIER', label: 'Sales Concern', icon: CheckCircle },
+    { role: 'CUSTOMER_SERVICE', label: 'Customer Service', icon: Headphones },
   ];
 
   const getSubHeaderText = () => {
     if (currentRole === 'LEAD' && !isLeadAuthenticated) return 'Please verify your identity.';
+    if (currentRole === 'CUSTOMER_SERVICE' && !isCSAuthenticated) return 'Please verify your identity.';
     if (currentRole === 'PROMOTER') return 'Track your sales and performance.';
     if (currentRole === 'VERIFIER') return 'Verify incoming sales entries.';
+    if (currentRole === 'CUSTOMER_SERVICE') return 'Log and manage customer complaints.';
     return 'Welcome back, verified user.';
   };
 
@@ -71,7 +82,6 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 pl-3">Switch Role (Demo)</div>
           {navItems.map((item) => (
             <button
               key={item.role}
@@ -123,6 +133,7 @@ const App: React.FC = () => {
             <option value="LEAD">Lead</option>
             <option value="PROMOTER">Promoter</option>
             <option value="VERIFIER">Verifier</option>
+            <option value="CUSTOMER_SERVICE">CS</option>
          </select>
       </div>
 
@@ -136,7 +147,7 @@ const App: React.FC = () => {
              <p className="text-sm text-slate-500">{getSubHeaderText()}</p>
            </div>
            <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm transition-colors ${
-             currentRole === 'LEAD' && !isLeadAuthenticated 
+             (currentRole === 'LEAD' && !isLeadAuthenticated) || (currentRole === 'CUSTOMER_SERVICE' && !isCSAuthenticated)
               ? 'bg-slate-200 text-slate-500' 
               : 'bg-indigo-100 text-indigo-700'
            }`}>
