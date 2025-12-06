@@ -95,6 +95,10 @@ export const updateComplaint = (updatedComplaint: ComplaintRecord) => {
   }
 };
 
+export const saveComplaints = (complaints: ComplaintRecord[]) => {
+  localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
+};
+
 export const getLogo = (): string | null => {
   return localStorage.getItem(STORAGE_KEYS.LOGO);
 };

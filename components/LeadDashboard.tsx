@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip } from 'lucide-react';
+import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip, Archive, Calendar } from 'lucide-react';
 import { Promoter, SaleRecord, SaleStatus, TicketType, KPIStats, Floor, ComplaintRecord, ComplaintStatus, ComplaintPriority } from '../types';
-import { getPromoters, getSales, savePromoters, getFloors, saveFloors, generateId, getComplaints, updateComplaint, addComplaint } from '../services/storageService';
+import { getPromoters, getSales, savePromoters, getFloors, saveFloors, generateId, getComplaints, updateComplaint, addComplaint, saveComplaints } from '../services/storageService';
 
 const LeadDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'KPI' | 'COMPLAINTS'>('KPI');
@@ -27,9 +27,13 @@ const LeadDashboard: React.FC = () => {
   const [newPromoterName, setNewPromoterName] = useState('');
   const [newFloorName, setNewFloorName] = useState('');
 
-  // Export Filter State
+  // Complaint Export Filter State
   const [exportStart, setExportStart] = useState(new Date().toISOString().split('T')[0]);
   const [exportEnd, setExportEnd] = useState(new Date().toISOString().split('T')[0]);
+
+  // Sales Export Filter State
+  const [salesExportStart, setSalesExportStart] = useState(new Date().toISOString().split('T')[0]);
+  const [salesExportEnd, setSalesExportEnd] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     loadData();
@@ -87,6 +91,20 @@ const LeadDashboard: React.FC = () => {
     }
   };
 
+  const handleClearResolved = () => {
+      if(!confirm("Clear all resolved complaints from this view? \n\nThey will be hidden from this list but will still appear in the downloaded CSV export.")) return;
+
+      const updatedComplaints = complaints.map(c => {
+          if (c.status === ComplaintStatus.RESOLVED) {
+              return { ...c, isArchived: true };
+          }
+          return c;
+      });
+
+      saveComplaints(updatedComplaints);
+      setComplaints(updatedComplaints);
+  };
+
   const handleInternalComplaintSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!internalDesc.trim()) return;
@@ -112,6 +130,7 @@ const LeadDashboard: React.FC = () => {
     const start = new Date(exportStart).setHours(0, 0, 0, 0);
     const end = new Date(exportEnd).setHours(23, 59, 59, 999);
     
+    // Use ALL complaints (including archived) for export
     const dataToExport = complaints.filter(c => c.timestamp >= start && c.timestamp <= end);
     
     if (dataToExport.length === 0) {
@@ -119,7 +138,7 @@ const LeadDashboard: React.FC = () => {
       return;
     }
 
-    const headers = ['Date', 'Submitted By', 'Priority', 'Customer', 'Mobile', 'Issue', 'Status', 'Resolution Notes'];
+    const headers = ['Date', 'Submitted By', 'Priority', 'Customer', 'Mobile', 'Issue', 'Status', 'Resolution Notes', 'Archived'];
     const rows = dataToExport.map(c => [
       new Date(c.timestamp).toLocaleString(),
       c.submittedBy,
@@ -128,7 +147,8 @@ const LeadDashboard: React.FC = () => {
       c.customerMobile,
       `"${c.description.replace(/"/g, '""')}"`,
       c.status,
-      `"${(c.resolutionNotes || '').replace(/"/g, '""')}"`
+      `"${(c.resolutionNotes || '').replace(/"/g, '""')}"`,
+      c.isArchived ? 'Yes' : 'No'
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -139,6 +159,43 @@ const LeadDashboard: React.FC = () => {
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `complaints_log_${exportStart}_to_${exportEnd}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadSales = () => {
+    const start = new Date(salesExportStart).setHours(0, 0, 0, 0);
+    const end = new Date(salesExportEnd).setHours(23, 59, 59, 999);
+    const dataToExport = sales.filter(s => s.timestamp >= start && s.timestamp <= end);
+
+    if (dataToExport.length === 0) {
+         alert("No sales found for the selected date range.");
+         return;
+    }
+
+    const headers = ['Date', 'Unique Code', 'Promoter', 'Customer', 'Mobile', 'Email', 'Location', 'Age', 'Kiddo', 'Extreme', 'Individual', 'Entry Only', 'Status'];
+    const rows = dataToExport.map(s => [
+        new Date(s.timestamp).toLocaleDateString() + ' ' + new Date(s.timestamp).toLocaleTimeString(),
+        `"${s.uniqueCode || '-'}"`,
+        `"${s.promoterName}"`,
+        `"${s.customer.name}"`,
+        s.customer.mobile,
+        s.customer.email,
+        `"${s.customer.location}"`,
+        s.customer.age,
+        s.items[TicketType.KIDDO] || 0,
+        s.items[TicketType.EXTREME] || 0,
+        s.items[TicketType.INDIVIDUAL] || 0,
+        s.items[TicketType.ENTRY_ONLY] || 0,
+        s.status
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `sales_report_${salesExportStart}_to_${salesExportEnd}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -204,6 +261,9 @@ const LeadDashboard: React.FC = () => {
     Mails: s.totalMailCollect,
   }));
 
+  // Filter out archived complaints for display only
+  const visibleComplaints = complaints.filter(c => !c.isArchived);
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 pb-20">
       {/* Tabs */}
@@ -227,9 +287,9 @@ const LeadDashboard: React.FC = () => {
            }`}
          >
             <MessageSquare size={16} className="mr-2" /> Complaints & Issues
-            {complaints.filter(c => c.status === ComplaintStatus.OPEN).length > 0 && (
+            {visibleComplaints.filter(c => c.status === ComplaintStatus.OPEN).length > 0 && (
                 <span className="ml-2 bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                    {complaints.filter(c => c.status === ComplaintStatus.OPEN).length}
+                    {visibleComplaints.filter(c => c.status === ComplaintStatus.OPEN).length}
                 </span>
             )}
          </button>
@@ -337,6 +397,46 @@ const LeadDashboard: React.FC = () => {
                 </div>
             </div>
 
+            {/* Sales Export Section */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center mb-4">
+                    <Download className="text-emerald-600 mr-2" />
+                    <h3 className="text-lg font-bold text-slate-800">Export BP Sales Data Report</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                            <input 
+                                type="date" 
+                                value={salesExportStart}
+                                onChange={(e) => setSalesExportStart(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                            <input 
+                                type="date" 
+                                value={salesExportEnd}
+                                onChange={(e) => setSalesExportEnd(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
+                            />
+                        </div>
+                    </div>
+                    <button 
+                        onClick={handleDownloadSales}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center h-[38px]"
+                    >
+                        <FileText className="mr-2" size={18} /> Download CSV
+                    </button>
+                </div>
+            </div>
+
             {/* Management Section */}
             <div className="border-t border-slate-200 pt-8">
                 <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
@@ -397,13 +497,23 @@ const LeadDashboard: React.FC = () => {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-slate-800">Incoming Complaints</h3>
-                        <button 
-                          onClick={() => setShowInternalForm(!showInternalForm)}
-                          className="text-sm bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg flex items-center transition-colors"
-                        >
-                            {showInternalForm ? <X size={16} className="mr-1" /> : <Plus size={16} className="mr-1" />}
-                            Log Internal Issue
-                        </button>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={handleClearResolved}
+                                className="text-sm bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 px-3 py-1.5 rounded-lg flex items-center transition-colors"
+                                title="Hide resolved complaints from this view (still available in export)"
+                            >
+                                <Archive size={16} className="mr-1" />
+                                Clear Resolved
+                            </button>
+                            <button 
+                              onClick={() => setShowInternalForm(!showInternalForm)}
+                              className="text-sm bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg flex items-center transition-colors"
+                            >
+                                {showInternalForm ? <X size={16} className="mr-1" /> : <Plus size={16} className="mr-1" />}
+                                Log Internal Issue
+                            </button>
+                        </div>
                     </div>
 
                     {showInternalForm && (
@@ -440,10 +550,10 @@ const LeadDashboard: React.FC = () => {
                     )}
 
                     <div className="space-y-4">
-                        {complaints.length === 0 ? (
-                            <p className="text-center py-8 text-slate-400">No complaints registered.</p>
+                        {visibleComplaints.length === 0 ? (
+                            <p className="text-center py-8 text-slate-400">No active complaints.</p>
                         ) : (
-                            complaints.map(complaint => (
+                            visibleComplaints.map(complaint => (
                                 <div key={complaint.id} className={`border rounded-lg p-4 transition-all ${
                                     complaint.status === ComplaintStatus.RESOLVED 
                                     ? 'bg-slate-50 border-slate-100 opacity-75' 
@@ -539,7 +649,7 @@ const LeadDashboard: React.FC = () => {
             <div className="space-y-6">
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 mb-4 flex items-center">
-                        <Download size={18} className="mr-2 text-indigo-600" /> Export Data
+                        <Download size={18} className="mr-2 text-indigo-600" /> Export Complaints
                     </h3>
                     <div className="space-y-4">
                         <div>
@@ -574,17 +684,17 @@ const LeadDashboard: React.FC = () => {
                      <div className="space-y-3">
                          <div className="flex justify-between items-center p-2 bg-slate-50 rounded">
                              <span className="text-sm text-slate-600">Open Issues</span>
-                             <span className="font-bold text-rose-600">{complaints.filter(c => c.status === ComplaintStatus.OPEN).length}</span>
+                             <span className="font-bold text-rose-600">{visibleComplaints.filter(c => c.status === ComplaintStatus.OPEN).length}</span>
                          </div>
                          <div className="flex justify-between items-center p-2 bg-slate-50 rounded">
                              <span className="text-sm text-slate-600">Resolved Today</span>
                              <span className="font-bold text-emerald-600">
-                                 {complaints.filter(c => c.status === ComplaintStatus.RESOLVED && new Date(c.timestamp).toDateString() === new Date().toDateString()).length}
+                                 {visibleComplaints.filter(c => c.status === ComplaintStatus.RESOLVED && new Date(c.timestamp).toDateString() === new Date().toDateString()).length}
                              </span>
                          </div>
                          <div className="flex justify-between items-center p-2 bg-slate-50 rounded">
                              <span className="text-sm text-slate-600">High Priority</span>
-                             <span className="font-bold text-slate-800">{complaints.filter(c => c.priority === ComplaintPriority.HIGH).length}</span>
+                             <span className="font-bold text-slate-800">{visibleComplaints.filter(c => c.priority === ComplaintPriority.HIGH).length}</span>
                          </div>
                      </div>
                  </div>

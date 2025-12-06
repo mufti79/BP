@@ -84,4 +84,5 @@ export interface ComplaintRecord {
   resolutionNotes?: string;
   resolvedAt?: number;
   attachmentUrl?: string; // Data URL for uploaded file
+  isArchived?: boolean; // If true, hidden from main view but available in export
 }

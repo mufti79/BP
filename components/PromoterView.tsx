@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Send, MapPin, Ticket, Download, Calendar, History, FileText, CheckCircle } from 'lucide-react';
+import { PlusCircle, MapPin, Ticket, History, CheckCircle } from 'lucide-react';
 import { Promoter, TicketType, CustomerData, SaleRecord, SaleStatus } from '../types';
 import { addSale, generateId, getSales } from '../services/storageService';
 
@@ -12,10 +12,8 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
   const [successMsg, setSuccessMsg] = useState('');
   const [lastUniqueCode, setLastUniqueCode] = useState('');
   
-  // History & Download State
+  // History State
   const [myHistory, setMyHistory] = useState<SaleRecord[]>([]);
-  const [dateStart, setDateStart] = useState(new Date().toISOString().split('T')[0]);
-  const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
   
   const [customer, setCustomer] = useState<CustomerData>({
     name: '',
@@ -103,49 +101,6 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
         setLastUniqueCode('');
       }, 5000);
     }, 300);
-  };
-
-  const handleDownload = () => {
-    const start = new Date(dateStart).setHours(0, 0, 0, 0);
-    const end = new Date(dateEnd).setHours(23, 59, 59, 999);
-    
-    const dataToExport = myHistory.filter(s => s.timestamp >= start && s.timestamp <= end);
-    
-    if (dataToExport.length === 0) {
-      alert("No entries found for the selected date range.");
-      return;
-    }
-
-    // Updated headers to include Promoter Name and Unique Code
-    const headers = ['Date', 'Unique Code', 'Promoter Name', 'Customer Name', 'Mobile', 'Email', 'Location', 'Age', 'Kiddo', 'Extreme', 'Individual', 'Entry Only', 'Status'];
-    const rows = dataToExport.map(s => [
-      new Date(s.timestamp).toLocaleDateString() + ' ' + new Date(s.timestamp).toLocaleTimeString(),
-      `"${s.uniqueCode || '-'}"`,
-      `"${s.promoterName}"`,
-      `"${s.customer.name}"`,
-      s.customer.mobile,
-      s.customer.email,
-      `"${s.customer.location}"`,
-      s.customer.age,
-      s.items[TicketType.KIDDO] || 0,
-      s.items[TicketType.EXTREME] || 0,
-      s.items[TicketType.INDIVIDUAL] || 0,
-      s.items[TicketType.ENTRY_ONLY] || 0,
-      s.status
-    ]);
-    
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
-      + rows.map(e => e.join(",")).join("\n");
-        
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    const safePromoterName = promoter.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    link.setAttribute("download", `${safePromoterName}_entries_${dateStart}_to_${dateEnd}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const assignedLocations = promoter.assignedFloors && promoter.assignedFloors.length > 0 
@@ -300,57 +255,18 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
             </form>
         </div>
 
-        {/* History & Download Section */}
+        {/* History Section */}
         <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
-                <div className="flex items-center mb-4 pb-2 border-b border-slate-100">
-                   <Download className="text-emerald-600 mr-2" />
-                   <h3 className="text-lg font-bold text-slate-800">Export Data</h3>
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
-                        <div className="relative">
-                           <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                           <input 
-                             type="date" 
-                             value={dateStart}
-                             onChange={(e) => setDateStart(e.target.value)}
-                             className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
-                           />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
-                         <div className="relative">
-                           <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                           <input 
-                             type="date" 
-                             value={dateEnd}
-                             onChange={(e) => setDateEnd(e.target.value)}
-                             className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
-                           />
-                        </div>
-                    </div>
-                    <button 
-                        onClick={handleDownload}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center"
-                    >
-                        <FileText className="mr-2" size={18} /> Download CSV
-                    </button>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 flex-1">
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 flex-1 h-full">
                 <div className="flex items-center mb-4 pb-2 border-b border-slate-100">
                    <History className="text-purple-600 mr-2" />
                    <h3 className="text-lg font-bold text-slate-800">Recent Entries</h3>
                 </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
                     {myHistory.length === 0 ? (
                         <p className="text-sm text-slate-400 text-center py-4">No entries found yet.</p>
                     ) : (
-                        myHistory.slice(0, 10).map(sale => (
+                        myHistory.slice(0, 15).map(sale => (
                             <div key={sale.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="flex flex-col">
