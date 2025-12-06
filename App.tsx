@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CheckCircle, LogOut, Headphones, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Users, CheckCircle, LogOut, Headphones, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { UserRole, Promoter } from './types';
-import { getPromoters } from './services/storageService';
+import { getPromoters, getDbStatus } from './services/storageService';
 import LogoUploader from './components/LogoUploader';
 import LeadDashboard from './components/LeadDashboard';
 import PromoterView from './components/PromoterView';
@@ -18,13 +18,24 @@ const App: React.FC = () => {
   const [loadingPromoters, setLoadingPromoters] = useState(true);
   const [currentPromoterId, setCurrentPromoterId] = useState<string>('');
   
+  // Connection Status State
+  const [isOnline, setIsOnline] = useState(true);
+  
   useEffect(() => {
     const fetchPromoters = async () => {
       try {
         const data = await getPromoters();
         setPromoters(data);
+        
+        // Update connection status based on the service's internal flag
+        setIsOnline(getDbStatus());
+
         if (data.length > 0 && !currentPromoterId) {
-          setCurrentPromoterId(data[0].id);
+          // Only set default if not already set, or if current selection is invalid
+          const currentExists = data.some(p => p.id === currentPromoterId);
+          if (!currentPromoterId || !currentExists) {
+             setCurrentPromoterId(data[0].id);
+          }
         }
       } catch (e) {
         console.error("Failed to load promoters", e);
@@ -32,8 +43,12 @@ const App: React.FC = () => {
         setLoadingPromoters(false);
       }
     };
+    
     fetchPromoters();
-  }, []);
+    // Poll for updates (e.g., floor assignments) every 10 seconds
+    const interval = setInterval(fetchPromoters, 10000);
+    return () => clearInterval(interval);
+  }, [currentPromoterId]);
 
   const activePromoter = promoters.find(p => p.id === currentPromoterId);
 
@@ -100,6 +115,12 @@ const App: React.FC = () => {
            </h1>
         </div>
 
+        {/* Status Indicator (Desktop) */}
+        <div className={`flex items-center gap-2 px-4 py-2 mx-4 mt-4 text-xs font-bold rounded-lg transition-colors ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+           {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+           <span>{isOnline ? 'Cloud Connected' : 'Offline Mode'}</span>
+        </div>
+
         <nav className="flex-1 p-4 space-y-2">
           {navItems.map((item) => (
             <button
@@ -142,12 +163,15 @@ const App: React.FC = () => {
       </aside>
 
       {/* Mobile Nav Header (Visible only on small screens) */}
-      <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center">
-         <div className="font-bold">Promoter KPI Tracker</div>
+      <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-md">
+         <div className="font-bold flex items-center gap-2">
+            <span>KPI Tracker</span>
+            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+         </div>
          <select 
             value={currentRole} 
             onChange={(e) => setCurrentRole(e.target.value as UserRole)}
-            className="bg-slate-800 text-sm rounded p-1"
+            className="bg-slate-800 text-sm rounded p-1 outline-none border border-slate-700"
           >
             <option value="LEAD">Lead</option>
             <option value="PROMOTER">Promoter</option>

@@ -188,11 +188,12 @@ const LeadDashboard: React.FC = () => {
          return;
     }
 
-    const headers = ['Date', 'Unique Code', 'Promoter', 'Customer', 'Mobile', 'Email', 'Location', 'Age', 'Kiddo', 'Extreme', 'Individual', 'Entry Only', 'Status'];
+    const headers = ['Date', 'Unique Code', 'Promoter', 'Sales Floor', 'Customer', 'Mobile', 'Email', 'Customer Origin', 'Age', 'Kiddo', 'Extreme', 'Individual', 'Entry Only', 'Status'];
     const rows = dataToExport.map(s => [
         new Date(s.timestamp).toLocaleDateString() + ' ' + new Date(s.timestamp).toLocaleTimeString(),
         `"${s.uniqueCode || '-'}"`,
         `"${s.promoterName}"`,
+        `"${s.saleLocation || 'General'}"`,
         `"${s.customer.name}"`,
         s.customer.mobile,
         s.customer.email,

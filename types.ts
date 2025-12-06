@@ -32,6 +32,7 @@ export interface SaleRecord {
   totalAmount: number; // calculated locally for display
   status: SaleStatus;
   timestamp: number;
+  saleLocation?: string; // The floor/location where the sale occurred
 }
 
 export interface FeedbackRecord {

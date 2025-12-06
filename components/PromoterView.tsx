@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, MapPin, Ticket, History, CheckCircle, MessageSquare, Star, Send, Lock, Key, ShieldAlert, LogOut } from 'lucide-react';
+import { PlusCircle, MapPin, Ticket, History, CheckCircle, MessageSquare, Star, Send, Lock, Key, ShieldAlert, LogOut, ChevronDown } from 'lucide-react';
 import { Promoter, TicketType, CustomerData, SaleRecord, SaleStatus, FeedbackRecord } from '../types';
 import { addSale, generateId, getSales, addFeedback, getFeedbacks, updatePromoter } from '../services/storageService';
 
@@ -41,6 +41,9 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
     [TicketType.INDIVIDUAL]: 0,
     [TicketType.ENTRY_ONLY]: 0,
   });
+  
+  // Floor selection
+  const [selectedFloor, setSelectedFloor] = useState<string>('');
 
   // Feedback specific state
   const [feedbackRating, setFeedbackRating] = useState(0);
@@ -62,6 +65,17 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
 
     refreshHistory();
   }, [promoter.id, promoter.password]);
+
+  // Update selected floor when assignments change
+  useEffect(() => {
+     if (promoter.assignedFloors && promoter.assignedFloors.length > 0) {
+        if (!selectedFloor || !promoter.assignedFloors.includes(selectedFloor)) {
+            setSelectedFloor(promoter.assignedFloors[0]);
+        }
+     } else {
+        setSelectedFloor('');
+     }
+  }, [promoter.assignedFloors]);
 
   const refreshHistory = async () => {
     // Refresh Sales
@@ -166,6 +180,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
           totalAmount: 0,
           status: SaleStatus.PENDING,
           timestamp: Date.now(),
+          saleLocation: selectedFloor || 'General'
         };
 
         await addSale(newSale);
@@ -407,6 +422,25 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                      </button>
                   </div>
                 )}
+                
+                {activeTab === 'ENTRY' && promoter.assignedFloors && promoter.assignedFloors.length > 0 && (
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Sales Floor (Current Location)</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500" size={18} />
+                            <select 
+                                value={selectedFloor}
+                                onChange={(e) => setSelectedFloor(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-slate-50"
+                            >
+                                {promoter.assignedFloors.map(floor => (
+                                    <option key={floor} value={floor}>{floor}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                        </div>
+                    </div>
+                )}
 
                 {/* Common Customer Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -459,7 +493,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                 </div>
                 {activeTab === 'ENTRY' && (
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Customer Location (Origin)</label>
                         <input
                         required
                         type="text"
@@ -467,7 +501,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                         value={customer.location}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                        placeholder="Shymoli"
+                        placeholder="e.g. Shymoli, Uttara"
                         />
                     </div>
                 )}
@@ -574,8 +608,13 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
                                             {sale.status}
                                         </span>
                                     </div>
-                                    <div className="text-xs text-slate-500 mb-2">
-                                        {new Date(sale.timestamp).toLocaleString()}
+                                    <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
+                                        <span>{new Date(sale.timestamp).toLocaleString()}</span>
+                                        {sale.saleLocation && (
+                                            <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 text-[10px]">
+                                                {sale.saleLocation}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap gap-1">
                                         {Object.entries(sale.items).map(([type, count]) => (

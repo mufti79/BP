@@ -365,3 +365,6 @@ export const saveLogo = async (url: string) => {
 };
 
 export const generateId = () => Math.random().toString(36).substr(2, 9);
+
+// Export connection status checker
+export const getDbStatus = () => isFirebaseAvailable;
