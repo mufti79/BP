@@ -1,4 +1,4 @@
-import { Promoter, SaleRecord, SaleStatus, TicketType, Floor, ComplaintRecord } from '../types';
+import { Promoter, SaleRecord, SaleStatus, TicketType, Floor, ComplaintRecord, FeedbackRecord } from '../types';
 
 // Mock Initial Data
 const INITIAL_PROMOTERS: Promoter[] = [
@@ -16,6 +16,7 @@ const INITIAL_FLOORS: Floor[] = [
 
 const INITIAL_SALES: SaleRecord[] = [];
 const INITIAL_COMPLAINTS: ComplaintRecord[] = [];
+const INITIAL_FEEDBACKS: FeedbackRecord[] = [];
 
 const STORAGE_KEYS = {
   PROMOTERS: 'pp_promoters',
@@ -23,6 +24,7 @@ const STORAGE_KEYS = {
   LOGO: 'pp_logo_url',
   FLOORS: 'pp_floors',
   COMPLAINTS: 'pp_complaints',
+  FEEDBACKS: 'pp_feedbacks',
 };
 
 export const getPromoters = (): Promoter[] => {
@@ -97,6 +99,19 @@ export const updateComplaint = (updatedComplaint: ComplaintRecord) => {
 
 export const saveComplaints = (complaints: ComplaintRecord[]) => {
   localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
+};
+
+// --- Feedback Service ---
+
+export const getFeedbacks = (): FeedbackRecord[] => {
+  const data = localStorage.getItem(STORAGE_KEYS.FEEDBACKS);
+  return data ? JSON.parse(data) : INITIAL_FEEDBACKS;
+};
+
+export const addFeedback = (feedback: FeedbackRecord) => {
+  const feedbacks = getFeedbacks();
+  feedbacks.push(feedback);
+  localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(feedbacks));
 };
 
 export const getLogo = (): string | null => {

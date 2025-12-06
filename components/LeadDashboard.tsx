@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip, Archive, Calendar } from 'lucide-react';
-import { Promoter, SaleRecord, SaleStatus, TicketType, KPIStats, Floor, ComplaintRecord, ComplaintStatus, ComplaintPriority } from '../types';
-import { getPromoters, getSales, savePromoters, getFloors, saveFloors, generateId, getComplaints, updateComplaint, addComplaint, saveComplaints } from '../services/storageService';
+import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip, Archive, Calendar, Star } from 'lucide-react';
+import { Promoter, SaleRecord, SaleStatus, TicketType, KPIStats, Floor, ComplaintRecord, ComplaintStatus, ComplaintPriority, FeedbackRecord } from '../types';
+import { getPromoters, getSales, savePromoters, getFloors, saveFloors, generateId, getComplaints, updateComplaint, addComplaint, saveComplaints, getFeedbacks } from '../services/storageService';
 
 const LeadDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'KPI' | 'COMPLAINTS'>('KPI');
@@ -12,6 +12,7 @@ const LeadDashboard: React.FC = () => {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [stats, setStats] = useState<KPIStats[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
 
   // Complaint Data
   const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
@@ -35,6 +36,10 @@ const LeadDashboard: React.FC = () => {
   const [salesExportStart, setSalesExportStart] = useState(new Date().toISOString().split('T')[0]);
   const [salesExportEnd, setSalesExportEnd] = useState(new Date().toISOString().split('T')[0]);
 
+  // Feedback Export Filter State
+  const [feedbackExportStart, setFeedbackExportStart] = useState(new Date().toISOString().split('T')[0]);
+  const [feedbackExportEnd, setFeedbackExportEnd] = useState(new Date().toISOString().split('T')[0]);
+
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 5000); // Live refresh
@@ -46,11 +51,13 @@ const LeadDashboard: React.FC = () => {
     const loadedSales = getSales();
     const loadedFloors = getFloors();
     const loadedComplaints = getComplaints();
+    const loadedFeedbacks = getFeedbacks();
     
     setPromoters(loadedPromoters);
     setSales(loadedSales);
     setFloors(loadedFloors);
     setComplaints(loadedComplaints.sort((a, b) => b.timestamp - a.timestamp));
+    setFeedbacks(loadedFeedbacks);
     
     calculateStats(loadedPromoters, loadedSales);
   };
@@ -201,6 +208,38 @@ const LeadDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleDownloadFeedback = () => {
+    const start = new Date(feedbackExportStart).setHours(0, 0, 0, 0);
+    const end = new Date(feedbackExportEnd).setHours(23, 59, 59, 999);
+    const dataToExport = feedbacks.filter(f => f.timestamp >= start && f.timestamp <= end);
+
+    if (dataToExport.length === 0) {
+         alert("No feedback found for the selected date range.");
+         return;
+    }
+
+    const headers = ['Date', 'Promoter', 'Customer', 'Age', 'Mobile', 'Email', 'Rating (1-5)', 'Comment'];
+    const rows = dataToExport.map(f => [
+        new Date(f.timestamp).toLocaleDateString() + ' ' + new Date(f.timestamp).toLocaleTimeString(),
+        `"${f.promoterName}"`,
+        `"${f.customer.name}"`,
+        f.customer.age,
+        f.customer.mobile,
+        f.customer.email,
+        f.rating,
+        `"${(f.comment || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `customer_feedback_${feedbackExportStart}_to_${feedbackExportEnd}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // --- Existing Logic ---
   const toggleFloorAssign = (promoterId: string, floorName: string) => {
     const updated = promoters.map(p => {
@@ -276,7 +315,7 @@ const LeadDashboard: React.FC = () => {
              : 'text-slate-500 hover:text-slate-700 bg-transparent'
            }`}
          >
-            <Layout size={16} className="mr-2" /> Operations & KPI
+            <Layout size={16} className="mr-2" /> BP Dashboard
          </button>
          <button 
            onClick={() => setActiveTab('COMPLAINTS')}
@@ -397,43 +436,90 @@ const LeadDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Sales Export Section */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center mb-4">
-                    <Download className="text-emerald-600 mr-2" />
-                    <h3 className="text-lg font-bold text-slate-800">Export BP Sales Data Report</h3>
+            {/* Data Exports Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* Sales Export Section */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full">
+                    <div className="flex items-center mb-4">
+                        <Download className="text-emerald-600 mr-2" />
+                        <h3 className="text-lg font-bold text-slate-800">Export BP Sales Data Report</h3>
+                    </div>
+                    <div className="mt-auto space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                                    <input 
+                                        type="date" 
+                                        value={salesExportStart}
+                                        onChange={(e) => setSalesExportStart(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                                    <input 
+                                        type="date" 
+                                        value={salesExportEnd}
+                                        onChange={(e) => setSalesExportEnd(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleDownloadSales}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        >
+                            <FileText className="mr-2" size={18} /> Download Sales CSV
+                        </button>
+                    </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                            <input 
-                                type="date" 
-                                value={salesExportStart}
-                                onChange={(e) => setSalesExportStart(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
-                            />
-                        </div>
+
+                {/* Feedback Export Section */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full">
+                    <div className="flex items-center mb-4">
+                        <Star className="text-yellow-500 mr-2" />
+                        <h3 className="text-lg font-bold text-slate-800">Export Customer Feedback Report</h3>
                     </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                            <input 
-                                type="date" 
-                                value={salesExportEnd}
-                                onChange={(e) => setSalesExportEnd(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
-                            />
+                    <div className="mt-auto space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                                    <input 
+                                        type="date" 
+                                        value={feedbackExportStart}
+                                        onChange={(e) => setFeedbackExportStart(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                                    <input 
+                                        type="date" 
+                                        value={feedbackExportEnd}
+                                        onChange={(e) => setFeedbackExportEnd(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
+                        <button 
+                            onClick={handleDownloadFeedback}
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
+                        >
+                            <FileText className="mr-2" size={18} /> Download Feedback CSV
+                        </button>
                     </div>
-                    <button 
-                        onClick={handleDownloadSales}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center h-[38px]"
-                    >
-                        <FileText className="mr-2" size={18} /> Download CSV
-                    </button>
                 </div>
             </div>
 

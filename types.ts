@@ -34,6 +34,16 @@ export interface SaleRecord {
   timestamp: number;
 }
 
+export interface FeedbackRecord {
+  id: string;
+  promoterId: string;
+  promoterName: string;
+  customer: CustomerData;
+  rating: number;
+  comment: string;
+  timestamp: number;
+}
+
 export interface Promoter {
   id: string;
   name: string;
