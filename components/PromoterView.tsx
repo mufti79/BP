@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, MapPin, Ticket, History, CheckCircle, MessageSquare, Star, Send } from 'lucide-react';
+import { PlusCircle, MapPin, Ticket, History, CheckCircle, MessageSquare, Star, Send, Lock, Key, ShieldAlert, LogOut } from 'lucide-react';
 import { Promoter, TicketType, CustomerData, SaleRecord, SaleStatus, FeedbackRecord } from '../types';
-import { addSale, generateId, getSales, addFeedback, getFeedbacks } from '../services/storageService';
+import { addSale, generateId, getSales, addFeedback, getFeedbacks, updatePromoter } from '../services/storageService';
 
 interface PromoterViewProps {
   promoter: Promoter;
 }
 
 const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState<'LOGIN' | 'CREATE_PASSWORD' | 'RESET_PASSWORD'>('LOGIN');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
+  const [adminAuthInput, setAdminAuthInput] = useState(''); // For resetting password
+  const [authError, setAuthError] = useState('');
+
   const [activeTab, setActiveTab] = useState<'ENTRY' | 'FEEDBACK'>('ENTRY');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,9 +46,22 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState('');
 
+  // Reset auth state when promoter changes
   useEffect(() => {
+    setIsAuthenticated(false);
+    setPasswordInput('');
+    setConfirmPasswordInput('');
+    setAdminAuthInput('');
+    setAuthError('');
+    
+    if (!promoter.password) {
+      setAuthMode('CREATE_PASSWORD');
+    } else {
+      setAuthMode('LOGIN');
+    }
+
     refreshHistory();
-  }, [promoter.id]);
+  }, [promoter.id, promoter.password]);
 
   const refreshHistory = () => {
     // Refresh Sales
@@ -56,6 +77,56 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
         .filter(f => f.promoterId === promoter.id)
         .sort((a, b) => b.timestamp - a.timestamp);
     setMyFeedbacks(myFbs);
+  };
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    if (authMode === 'CREATE_PASSWORD') {
+      if (passwordInput.length < 4) {
+        setAuthError('Password must be at least 4 characters');
+        return;
+      }
+      if (passwordInput !== confirmPasswordInput) {
+        setAuthError('Passwords do not match');
+        return;
+      }
+      // Save password
+      const updatedPromoter = { ...promoter, password: passwordInput };
+      updatePromoter(updatedPromoter);
+      setIsAuthenticated(true);
+      // Parent component might re-render, but local state should hold.
+      // Actually, updating storage doesn't auto-update the prop passed from App.tsx immediately in this architecture 
+      // unless App.tsx listens to storage. 
+      // However, we can proceed with local auth success.
+    } else if (authMode === 'LOGIN') {
+      if (passwordInput === promoter.password) {
+        setIsAuthenticated(true);
+      } else {
+        setAuthError('Incorrect Password');
+      }
+    } else if (authMode === 'RESET_PASSWORD') {
+      // Simulate Admin Check (Using 'admin' as master key for demo)
+      if (adminAuthInput === 'admin') {
+        // Reset Logic: Clear password and go to create mode
+        const updatedPromoter = { ...promoter, password: undefined };
+        updatePromoter(updatedPromoter);
+        setAuthMode('CREATE_PASSWORD');
+        setPasswordInput('');
+        setConfirmPasswordInput('');
+        setAdminAuthInput('');
+        alert('Password has been reset. Please create a new one.');
+      } else {
+        setAuthError('Invalid Admin Password. Contact Team Lead.');
+      }
+    }
+  };
+
+  const handleLogout = () => {
+      setIsAuthenticated(false);
+      setPasswordInput('');
+      setAuthMode('LOGIN');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -157,14 +228,127 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
     ? promoter.assignedFloors.join(', ')
     : 'No location assigned';
 
+  // --- Auth View ---
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 animate-fade-in">
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-indigo-100 max-w-md w-full text-center">
+           <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
+             <Lock size={32} />
+           </div>
+           
+           <h2 className="text-2xl font-bold text-slate-800 mb-2">Hello, {promoter.name}</h2>
+           
+           {authMode === 'CREATE_PASSWORD' && (
+             <p className="text-slate-500 mb-6">Create a secure password to access your dashboard.</p>
+           )}
+           {authMode === 'LOGIN' && (
+             <p className="text-slate-500 mb-6">Please enter your password to continue.</p>
+           )}
+           {authMode === 'RESET_PASSWORD' && (
+             <p className="text-slate-500 mb-6">Admin authorization required to reset password.</p>
+           )}
+
+           <form onSubmit={handleAuthSubmit} className="space-y-4 text-left">
+             {authMode === 'RESET_PASSWORD' ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Team Lead Password</label>
+                  <input
+                    type="password"
+                    value={adminAuthInput}
+                    onChange={(e) => setAdminAuthInput(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Ask Team Lead..."
+                    autoFocus
+                  />
+                </div>
+             ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                       {authMode === 'CREATE_PASSWORD' ? 'New Password' : 'Password'}
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="Enter password..."
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {authMode === 'CREATE_PASSWORD' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Confirm Password</label>
+                      <input
+                        type="password"
+                        value={confirmPasswordInput}
+                        onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        placeholder="Confirm password..."
+                      />
+                    </div>
+                  )}
+                </>
+             )}
+
+             {authError && (
+               <div className="p-2 bg-red-50 text-red-600 text-xs rounded text-center font-medium">
+                 {authError}
+               </div>
+             )}
+
+             <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors">
+               {authMode === 'CREATE_PASSWORD' ? 'Set Password & Login' : authMode === 'RESET_PASSWORD' ? 'Verify & Reset' : 'Login'}
+             </button>
+           </form>
+
+           {authMode === 'LOGIN' && (
+             <div className="mt-4 pt-4 border-t border-slate-100">
+               <button 
+                 onClick={() => { setAuthMode('RESET_PASSWORD'); setAuthError(''); }}
+                 className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+               >
+                 Forgot Password? / Reset
+               </button>
+             </div>
+           )}
+           {authMode === 'RESET_PASSWORD' && (
+             <div className="mt-4 pt-4 border-t border-slate-100">
+               <button 
+                 onClick={() => { setAuthMode('LOGIN'); setAuthError(''); }}
+                 className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+               >
+                 Back to Login
+               </button>
+             </div>
+           )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Main Dashboard View ---
   return (
     <div className="max-w-4xl mx-auto p-6 pb-20">
       <div className="bg-indigo-900 text-white rounded-2xl p-6 mb-8 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-        <h2 className="text-2xl font-bold relative z-10">{promoter.name}</h2>
-        <div className="flex items-center mt-2 text-indigo-200 relative z-10">
-          <MapPin size={16} className="mr-2 flex-shrink-0" />
-          <span className="truncate">{assignedLocations}</span>
+        <div className="flex justify-between items-start relative z-10">
+            <div>
+                <h2 className="text-2xl font-bold">{promoter.name}</h2>
+                <div className="flex items-center mt-2 text-indigo-200">
+                    <MapPin size={16} className="mr-2 flex-shrink-0" />
+                    <span className="truncate">{assignedLocations}</span>
+                </div>
+            </div>
+            <button 
+                onClick={handleLogout}
+                className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors text-white"
+                title="Lock Session"
+            >
+                <LogOut size={20} />
+            </button>
         </div>
       </div>
 

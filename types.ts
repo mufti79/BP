@@ -48,6 +48,7 @@ export interface Promoter {
   id: string;
   name: string;
   assignedFloors: string[];
+  password?: string; // Password for BP login
 }
 
 export interface Floor {

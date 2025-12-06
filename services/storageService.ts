@@ -46,6 +46,15 @@ export const savePromoters = (promoters: Promoter[]) => {
   localStorage.setItem(STORAGE_KEYS.PROMOTERS, JSON.stringify(promoters));
 };
 
+export const updatePromoter = (updatedPromoter: Promoter) => {
+  const promoters = getPromoters();
+  const index = promoters.findIndex(p => p.id === updatedPromoter.id);
+  if (index !== -1) {
+    promoters[index] = updatedPromoter;
+    savePromoters(promoters);
+  }
+};
+
 export const getFloors = (): Floor[] => {
   const data = localStorage.getItem(STORAGE_KEYS.FLOORS);
   return data ? JSON.parse(data) : INITIAL_FLOORS;
