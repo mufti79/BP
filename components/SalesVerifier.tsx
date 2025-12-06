@@ -14,13 +14,14 @@ const SalesVerifier: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const loadSales = () => {
-    const allSales = getSales().sort((a, b) => b.timestamp - a.timestamp);
+  const loadSales = async () => {
+    const allSales = await getSales();
+    allSales.sort((a, b) => b.timestamp - a.timestamp);
     setSales(allSales);
   };
 
-  const handleStatusChange = (id: string, status: SaleStatus) => {
-    updateSaleStatus(id, status);
+  const handleStatusChange = async (id: string, status: SaleStatus) => {
+    await updateSaleStatus(id, status);
     loadSales();
     if (selectedSaleId === id) setSelectedSaleId(''); // Clear selection after action
   };

@@ -63,23 +63,23 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
     refreshHistory();
   }, [promoter.id, promoter.password]);
 
-  const refreshHistory = () => {
+  const refreshHistory = async () => {
     // Refresh Sales
-    const allSales = getSales();
+    const allSales = await getSales();
     const mySales = allSales
       .filter(s => s.promoterId === promoter.id)
       .sort((a, b) => b.timestamp - a.timestamp);
     setMyHistory(mySales);
 
     // Refresh Feedbacks
-    const allFeedbacks = getFeedbacks();
+    const allFeedbacks = await getFeedbacks();
     const myFbs = allFeedbacks
         .filter(f => f.promoterId === promoter.id)
         .sort((a, b) => b.timestamp - a.timestamp);
     setMyFeedbacks(myFbs);
   };
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
 
@@ -94,12 +94,10 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
       }
       // Save password
       const updatedPromoter = { ...promoter, password: passwordInput };
-      updatePromoter(updatedPromoter);
+      await updatePromoter(updatedPromoter);
       setIsAuthenticated(true);
-      // Parent component might re-render, but local state should hold.
-      // Actually, updating storage doesn't auto-update the prop passed from App.tsx immediately in this architecture 
-      // unless App.tsx listens to storage. 
-      // However, we can proceed with local auth success.
+      // Since promoter prop won't update immediately until parent re-fetches, 
+      // we rely on local success, and the DB update handles persistence.
     } else if (authMode === 'LOGIN') {
       if (passwordInput === promoter.password) {
         setIsAuthenticated(true);
@@ -110,8 +108,8 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
       // Simulate Admin Check (Using 'admin' as master key for demo)
       if (adminAuthInput === 'admin') {
         // Reset Logic: Clear password and go to create mode
-        const updatedPromoter = { ...promoter, password: undefined };
-        updatePromoter(updatedPromoter);
+        const updatedPromoter = { ...promoter, password: '' }; // Empty string to reset
+        await updatePromoter(updatedPromoter);
         setAuthMode('CREATE_PASSWORD');
         setPasswordInput('');
         setConfirmPasswordInput('');
@@ -141,7 +139,7 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -170,13 +168,14 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
           timestamp: Date.now(),
         };
 
-        addSale(newSale);
+        await addSale(newSale);
         
         setTimeout(() => {
           setSuccessMsg('Entry Submitted Successfully!');
           setLastUniqueCode(uniqueCode);
           resetForm();
           setIsSubmitting(false);
+          refreshHistory();
           
           setTimeout(() => {
             setSuccessMsg('');
@@ -201,20 +200,19 @@ const PromoterView: React.FC<PromoterViewProps> = ({ promoter }) => {
             timestamp: Date.now()
         };
 
-        addFeedback(newFeedback);
+        await addFeedback(newFeedback);
 
         setTimeout(() => {
             setSuccessMsg('Feedback Recorded!');
             resetForm();
             setIsSubmitting(false);
+            refreshHistory();
 
             setTimeout(() => {
                 setSuccessMsg('');
             }, 3000);
         }, 300);
     }
-    
-    refreshHistory();
   };
 
   const resetForm = () => {

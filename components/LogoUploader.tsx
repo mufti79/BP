@@ -7,27 +7,30 @@ const LogoUploader: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = getLogo();
-    if (saved) setLogoUrl(saved);
+    const fetchLogo = async () => {
+      const saved = await getLogo();
+      if (saved) setLogoUrl(saved);
+    };
+    fetchLogo();
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const result = reader.result as string;
         setLogoUrl(result);
-        saveLogo(result);
+        await saveLogo(result);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const clearLogo = (e: React.MouseEvent) => {
+  const clearLogo = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setLogoUrl(null);
-    saveLogo('');
+    await saveLogo('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

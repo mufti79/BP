@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip, Archive, Calendar, Star } from 'lucide-react';
 import { Promoter, SaleRecord, SaleStatus, TicketType, KPIStats, Floor, ComplaintRecord, ComplaintStatus, ComplaintPriority, FeedbackRecord } from '../types';
-import { getPromoters, getSales, savePromoters, getFloors, saveFloors, generateId, getComplaints, updateComplaint, addComplaint, saveComplaints, getFeedbacks } from '../services/storageService';
+import { 
+  getPromoters, getSales, getFloors, getComplaints, getFeedbacks,
+  addPromoter, deletePromoter, updatePromoter,
+  addFloor, deleteFloor,
+  addComplaint, updateComplaint,
+  generateId 
+} from '../services/storageService';
 
 const LeadDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'KPI' | 'COMPLAINTS'>('KPI');
@@ -46,20 +52,24 @@ const LeadDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const loadData = () => {
-    const loadedPromoters = getPromoters();
-    const loadedSales = getSales();
-    const loadedFloors = getFloors();
-    const loadedComplaints = getComplaints();
-    const loadedFeedbacks = getFeedbacks();
-    
-    setPromoters(loadedPromoters);
-    setSales(loadedSales);
-    setFloors(loadedFloors);
-    setComplaints(loadedComplaints.sort((a, b) => b.timestamp - a.timestamp));
-    setFeedbacks(loadedFeedbacks);
-    
-    calculateStats(loadedPromoters, loadedSales);
+  const loadData = async () => {
+    try {
+      const loadedPromoters = await getPromoters();
+      const loadedSales = await getSales();
+      const loadedFloors = await getFloors();
+      const loadedComplaints = await getComplaints();
+      const loadedFeedbacks = await getFeedbacks();
+      
+      setPromoters(loadedPromoters);
+      setSales(loadedSales);
+      setFloors(loadedFloors);
+      setComplaints(loadedComplaints.sort((a, b) => b.timestamp - a.timestamp));
+      setFeedbacks(loadedFeedbacks);
+      
+      calculateStats(loadedPromoters, loadedSales);
+    } catch (error) {
+      console.error("Error loading dashboard data", error);
+    }
   };
 
   const calculateStats = (currentPromoters: Promoter[], currentSales: SaleRecord[]) => {
@@ -82,7 +92,7 @@ const LeadDashboard: React.FC = () => {
 
   // --- Complaint Management ---
 
-  const handleResolveComplaint = (id: string) => {
+  const handleResolveComplaint = async (id: string) => {
     const complaint = complaints.find(c => c.id === id);
     if (complaint && resolutionNote.trim()) {
       const updated: ComplaintRecord = {
@@ -91,28 +101,25 @@ const LeadDashboard: React.FC = () => {
         resolutionNotes: resolutionNote,
         resolvedAt: Date.now()
       };
-      updateComplaint(updated);
+      await updateComplaint(updated);
       setComplaintResolveId(null);
       setResolutionNote('');
       loadData();
     }
   };
 
-  const handleClearResolved = () => {
+  const handleClearResolved = async () => {
       if(!confirm("Clear all resolved complaints from this view? \n\nThey will be hidden from this list but will still appear in the downloaded CSV export.")) return;
 
-      const updatedComplaints = complaints.map(c => {
-          if (c.status === ComplaintStatus.RESOLVED) {
-              return { ...c, isArchived: true };
-          }
-          return c;
-      });
-
-      saveComplaints(updatedComplaints);
-      setComplaints(updatedComplaints);
+      const promises = complaints
+        .filter(c => c.status === ComplaintStatus.RESOLVED && !c.isArchived)
+        .map(c => updateComplaint({ ...c, isArchived: true }));
+      
+      await Promise.all(promises);
+      loadData();
   };
 
-  const handleInternalComplaintSubmit = (e: React.FormEvent) => {
+  const handleInternalComplaintSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!internalDesc.trim()) return;
     
@@ -127,7 +134,7 @@ const LeadDashboard: React.FC = () => {
         submittedBy: 'Team Lead'
     };
     
-    addComplaint(newComplaint);
+    await addComplaint(newComplaint);
     setInternalDesc('');
     setShowInternalForm(false);
     loadData();
@@ -240,56 +247,49 @@ const LeadDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // --- Existing Logic ---
-  const toggleFloorAssign = (promoterId: string, floorName: string) => {
-    const updated = promoters.map(p => {
-      if (p.id === promoterId) {
-        const currentFloors = p.assignedFloors || [];
-        const exists = currentFloors.includes(floorName);
-        let newFloors = exists ? currentFloors.filter(f => f !== floorName) : [...currentFloors, floorName];
-        return { ...p, assignedFloors: newFloors };
-      }
-      return p;
-    });
-    setPromoters(updated);
-    savePromoters(updated);
+  // --- Logic Updated for Async/Firestore ---
+  const toggleFloorAssign = async (promoterId: string, floorName: string) => {
+    const promoter = promoters.find(p => p.id === promoterId);
+    if (!promoter) return;
+
+    const currentFloors = promoter.assignedFloors || [];
+    const exists = currentFloors.includes(floorName);
+    let newFloors = exists ? currentFloors.filter(f => f !== floorName) : [...currentFloors, floorName];
+    
+    await updatePromoter({ ...promoter, assignedFloors: newFloors });
+    loadData();
   };
 
-  const handleAddPromoter = (e: React.FormEvent) => {
+  const handleAddPromoter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPromoterName.trim()) return;
     const newPromoter: Promoter = { id: generateId(), name: newPromoterName, assignedFloors: [] };
-    const updated = [...promoters, newPromoter];
-    setPromoters(updated);
-    savePromoters(updated);
+    
+    await addPromoter(newPromoter);
     setNewPromoterName('');
-    calculateStats(updated, sales);
+    loadData();
   };
 
-  const handleDeletePromoter = (id: string) => {
+  const handleDeletePromoter = async (id: string) => {
     if (confirm('Remove this promoter?')) {
-      const updated = promoters.filter(p => p.id !== id);
-      setPromoters(updated);
-      savePromoters(updated);
-      calculateStats(updated, sales);
+      await deletePromoter(id);
+      loadData();
     }
   };
 
-  const handleAddFloor = (e: React.FormEvent) => {
+  const handleAddFloor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFloorName.trim()) return;
     const newFloor: Floor = { id: generateId(), name: newFloorName };
-    const updated = [...floors, newFloor];
-    setFloors(updated);
-    saveFloors(updated);
+    await addFloor(newFloor);
     setNewFloorName('');
+    loadData();
   };
 
-  const handleDeleteFloor = (id: string) => {
+  const handleDeleteFloor = async (id: string) => {
     if (confirm('Remove this floor?')) {
-      const updated = floors.filter(f => f.id !== id);
-      setFloors(updated);
-      saveFloors(updated);
+      await deleteFloor(id);
+      loadData();
     }
   };
 
@@ -300,7 +300,6 @@ const LeadDashboard: React.FC = () => {
     Mails: s.totalMailCollect,
   }));
 
-  // Filter out archived complaints for display only
   const visibleComplaints = complaints.filter(c => !c.isArchived);
 
   return (

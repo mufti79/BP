@@ -22,8 +22,9 @@ const CustomerServiceView: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const loadComplaints = () => {
-    const all = getComplaints().sort((a, b) => b.timestamp - a.timestamp);
+  const loadComplaints = async () => {
+    const all = await getComplaints();
+    all.sort((a, b) => b.timestamp - a.timestamp);
     setMyComplaints(all);
   };
 
@@ -47,7 +48,7 @@ const CustomerServiceView: React.FC = () => {
       if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || !customerName.trim()) return;
 
@@ -65,7 +66,7 @@ const CustomerServiceView: React.FC = () => {
       attachmentUrl: attachment || undefined
     };
 
-    addComplaint(newComplaint);
+    await addComplaint(newComplaint);
     
     setTimeout(() => {
       setSuccessMsg('Complaint forwarded to Team Lead successfully.');

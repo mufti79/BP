@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Users, CheckCircle, LogOut, Headphones } from 'lucide-react';
-import { UserRole } from './types';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, Users, CheckCircle, LogOut, Headphones, Loader2 } from 'lucide-react';
+import { UserRole, Promoter } from './types';
 import { getPromoters } from './services/storageService';
 import LogoUploader from './components/LogoUploader';
 import LeadDashboard from './components/LeadDashboard';
@@ -14,11 +14,28 @@ const App: React.FC = () => {
   const [isLeadAuthenticated, setIsLeadAuthenticated] = useState(false);
   const [isCSAuthenticated, setIsCSAuthenticated] = useState(false);
   
-  // For demo, we just pick the first promoter as the logged in one if role is PROMOTER
-  const [currentPromoterId, setCurrentPromoterId] = useState<string>('p1');
+  const [promoters, setPromoters] = useState<Promoter[]>([]);
+  const [loadingPromoters, setLoadingPromoters] = useState(true);
+  const [currentPromoterId, setCurrentPromoterId] = useState<string>('');
   
-  const promoters = getPromoters();
-  const activePromoter = promoters.find(p => p.id === currentPromoterId) || promoters[0];
+  useEffect(() => {
+    const fetchPromoters = async () => {
+      try {
+        const data = await getPromoters();
+        setPromoters(data);
+        if (data.length > 0 && !currentPromoterId) {
+          setCurrentPromoterId(data[0].id);
+        }
+      } catch (e) {
+        console.error("Failed to load promoters", e);
+      } finally {
+        setLoadingPromoters(false);
+      }
+    };
+    fetchPromoters();
+  }, []);
+
+  const activePromoter = promoters.find(p => p.id === currentPromoterId);
 
   const handleLeadLogin = () => {
     setIsLeadAuthenticated(true);
@@ -41,6 +58,8 @@ const App: React.FC = () => {
         }
         return <LeadDashboard />;
       case 'PROMOTER':
+        if (loadingPromoters) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={40}/></div>;
+        if (!activePromoter) return <div className="p-8 text-center text-slate-500">No promoters found. Please ask Team Lead to create a promoter account.</div>;
         return <PromoterView promoter={activePromoter} />;
       case 'VERIFIER':
         return <SalesVerifier />;
@@ -98,7 +117,7 @@ const App: React.FC = () => {
           ))}
         </nav>
 
-        {currentRole === 'PROMOTER' && (
+        {currentRole === 'PROMOTER' && !loadingPromoters && (
            <div className="p-4 bg-slate-800/50 border-t border-slate-800">
              <label className="block text-xs font-medium text-slate-400 mb-2">Select BP:</label>
              <select 

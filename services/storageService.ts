@@ -1,135 +1,134 @@
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  setDoc, 
+  doc, 
+  deleteDoc, 
+  updateDoc,
+  query,
+  where,
+  getDoc
+} from 'firebase/firestore';
 import { Promoter, SaleRecord, SaleStatus, TicketType, Floor, ComplaintRecord, FeedbackRecord } from '../types';
 
-// Mock Initial Data
-const INITIAL_PROMOTERS: Promoter[] = [
-  { id: 'p1', name: 'Alice Johnson', assignedFloors: ['Ground Floor - Main Entrance'] },
-  { id: 'p2', name: 'Bob Smith', assignedFloors: ['1st Floor - Food Court'] },
-  { id: 'p3', name: 'Charlie Davis', assignedFloors: ['2nd Floor - Arcade Zone', '3rd Floor - Cinema Lobby'] },
-];
-
-const INITIAL_FLOORS: Floor[] = [
-  { id: 'f1', name: 'Ground Floor - Main Entrance' },
-  { id: 'f2', name: '1st Floor - Food Court' },
-  { id: 'f3', name: '2nd Floor - Arcade Zone' },
-  { id: 'f4', name: '3rd Floor - Cinema Lobby' },
-];
-
-const INITIAL_SALES: SaleRecord[] = [];
-const INITIAL_COMPLAINTS: ComplaintRecord[] = [];
-const INITIAL_FEEDBACKS: FeedbackRecord[] = [];
-
-const STORAGE_KEYS = {
-  PROMOTERS: 'pp_promoters',
-  SALES: 'pp_sales',
-  LOGO: 'pp_logo_url',
-  FLOORS: 'pp_floors',
-  COMPLAINTS: 'pp_complaints',
-  FEEDBACKS: 'pp_feedbacks',
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCCfV-lQ1sAcE2VATAzIV22tqinnS2KHzc",
+  authDomain: "tfw-bp.firebaseapp.com",
+  projectId: "tfw-bp",
+  storageBucket: "tfw-bp.firebasestorage.app",
+  messagingSenderId: "26793218166",
+  appId: "1:26793218166:web:fb8c980ca614354cca0f57",
+  measurementId: "G-TEJQGN11ML"
 };
 
-export const getPromoters = (): Promoter[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.PROMOTERS);
-  if (data) {
-    const parsed = JSON.parse(data);
-    // Backward compatibility: ensure assignedFloors exists
-    return parsed.map((p: any) => ({
-      ...p,
-      assignedFloors: Array.isArray(p.assignedFloors) 
-        ? p.assignedFloors 
-        : (p.assignedFloor ? [p.assignedFloor] : [])
-    }));
-  }
-  return INITIAL_PROMOTERS;
-};
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-export const savePromoters = (promoters: Promoter[]) => {
-  localStorage.setItem(STORAGE_KEYS.PROMOTERS, JSON.stringify(promoters));
-};
-
-export const updatePromoter = (updatedPromoter: Promoter) => {
-  const promoters = getPromoters();
-  const index = promoters.findIndex(p => p.id === updatedPromoter.id);
-  if (index !== -1) {
-    promoters[index] = updatedPromoter;
-    savePromoters(promoters);
+// Helper to snapshot data from collections
+const fetchCollection = async <T>(collectionName: string): Promise<T[]> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    return querySnapshot.docs.map(doc => doc.data() as T);
+  } catch (error) {
+    console.error(`Error fetching ${collectionName}:`, error);
+    return [];
   }
 };
 
-export const getFloors = (): Floor[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.FLOORS);
-  return data ? JSON.parse(data) : INITIAL_FLOORS;
+// --- Promoters Service ---
+
+export const getPromoters = async (): Promise<Promoter[]> => {
+  return await fetchCollection<Promoter>('promoters');
 };
 
-export const saveFloors = (floors: Floor[]) => {
-  localStorage.setItem(STORAGE_KEYS.FLOORS, JSON.stringify(floors));
+export const addPromoter = async (promoter: Promoter) => {
+  await setDoc(doc(db, 'promoters', promoter.id), promoter);
 };
 
-export const getSales = (): SaleRecord[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.SALES);
-  return data ? JSON.parse(data) : INITIAL_SALES;
+export const updatePromoter = async (promoter: Promoter) => {
+  await setDoc(doc(db, 'promoters', promoter.id), promoter, { merge: true });
 };
 
-export const addSale = (sale: SaleRecord) => {
-  const sales = getSales();
-  sales.push(sale);
-  localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
+export const deletePromoter = async (promoterId: string) => {
+  await deleteDoc(doc(db, 'promoters', promoterId));
 };
 
-export const updateSaleStatus = (saleId: string, status: SaleStatus) => {
-  const sales = getSales();
-  const index = sales.findIndex((s) => s.id === saleId);
-  if (index !== -1) {
-    sales[index].status = status;
-    localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
-  }
+// --- Floors Service ---
+
+export const getFloors = async (): Promise<Floor[]> => {
+  return await fetchCollection<Floor>('floors');
+};
+
+export const addFloor = async (floor: Floor) => {
+  await setDoc(doc(db, 'floors', floor.id), floor);
+};
+
+export const deleteFloor = async (floorId: string) => {
+  await deleteDoc(doc(db, 'floors', floorId));
+};
+
+// --- Sales Service ---
+
+export const getSales = async (): Promise<SaleRecord[]> => {
+  return await fetchCollection<SaleRecord>('sales');
+};
+
+export const addSale = async (sale: SaleRecord) => {
+  await setDoc(doc(db, 'sales', sale.id), sale);
+};
+
+export const updateSaleStatus = async (saleId: string, status: SaleStatus) => {
+  const saleRef = doc(db, 'sales', saleId);
+  await updateDoc(saleRef, { status });
 };
 
 // --- Complaints Service ---
 
-export const getComplaints = (): ComplaintRecord[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.COMPLAINTS);
-  return data ? JSON.parse(data) : INITIAL_COMPLAINTS;
+export const getComplaints = async (): Promise<ComplaintRecord[]> => {
+  return await fetchCollection<ComplaintRecord>('complaints');
 };
 
-export const addComplaint = (complaint: ComplaintRecord) => {
-  const complaints = getComplaints();
-  complaints.push(complaint);
-  localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
+export const addComplaint = async (complaint: ComplaintRecord) => {
+  await setDoc(doc(db, 'complaints', complaint.id), complaint);
 };
 
-export const updateComplaint = (updatedComplaint: ComplaintRecord) => {
-  const complaints = getComplaints();
-  const index = complaints.findIndex(c => c.id === updatedComplaint.id);
-  if (index !== -1) {
-    complaints[index] = updatedComplaint;
-    localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
-  }
-};
-
-export const saveComplaints = (complaints: ComplaintRecord[]) => {
-  localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(complaints));
+export const updateComplaint = async (complaint: ComplaintRecord) => {
+  await setDoc(doc(db, 'complaints', complaint.id), complaint);
 };
 
 // --- Feedback Service ---
 
-export const getFeedbacks = (): FeedbackRecord[] => {
-  const data = localStorage.getItem(STORAGE_KEYS.FEEDBACKS);
-  return data ? JSON.parse(data) : INITIAL_FEEDBACKS;
+export const getFeedbacks = async (): Promise<FeedbackRecord[]> => {
+  return await fetchCollection<FeedbackRecord>('feedbacks');
 };
 
-export const addFeedback = (feedback: FeedbackRecord) => {
-  const feedbacks = getFeedbacks();
-  feedbacks.push(feedback);
-  localStorage.setItem(STORAGE_KEYS.FEEDBACKS, JSON.stringify(feedbacks));
+export const addFeedback = async (feedback: FeedbackRecord) => {
+  await setDoc(doc(db, 'feedbacks', feedback.id), feedback);
 };
 
-export const getLogo = (): string | null => {
-  return localStorage.getItem(STORAGE_KEYS.LOGO);
+// --- Settings / Logo ---
+
+export const getLogo = async (): Promise<string | null> => {
+  try {
+    const docRef = doc(db, 'settings', 'global');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().logoUrl;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching logo:", error);
+    return null;
+  }
 };
 
-export const saveLogo = (url: string) => {
-  localStorage.setItem(STORAGE_KEYS.LOGO, url);
+export const saveLogo = async (url: string) => {
+  await setDoc(doc(db, 'settings', 'global'), { logoUrl: url }, { merge: true });
 };
 
-// Helper to generate IDs
+// Helper to generate IDs (Client side generation is fine for Firestore doc IDs)
 export const generateId = () => Math.random().toString(36).substr(2, 9);
