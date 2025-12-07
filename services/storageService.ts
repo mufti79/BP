@@ -6,13 +6,13 @@ import {
   setDoc, 
   doc, 
   deleteDoc, 
-  updateDoc,
+  updateDoc, 
   getDoc,
   Firestore
 } from 'firebase/firestore';
 import { Promoter, SaleRecord, SaleStatus, Floor, ComplaintRecord, FeedbackRecord } from '../types';
 
-// Firebase Configuration
+// --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyCCfV-lQ1sAcE2VATAzIV22tqinnS2KHzc",
   authDomain: "tfw-bp.firebaseapp.com",
@@ -77,7 +77,8 @@ const setLocal = (key: string, data: any) => {
 };
 
 // Timeout duration for Firebase operations (to prevent hanging)
-const FIREBASE_TIMEOUT_MS = 2000;
+// Increased to 5000ms to allow for slower connections
+const FIREBASE_TIMEOUT_MS = 5000;
 
 // Circuit Breaker Wrapper
 // If Firebase fails with a permission/config error, OR times out, it disables Firebase for the rest of the session

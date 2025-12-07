@@ -2,10 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { KPIStats, SaleRecord, Promoter } from '../types';
 
 const getClient = () => {
-  const apiKey = process.env.API_KEY || ''; 
-  // In a real scenario, this environment variable handles the key. 
-  // For this demo structure, we assume it's injected.
-  return new GoogleGenAI({ apiKey });
+  // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const generatePerformanceInsight = async (

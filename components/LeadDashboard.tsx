@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip, Archive, Calendar, Star } from 'lucide-react';
+import { Users, Map, CheckCircle, Plus, Trash2, Settings, Check, Layout, MessageSquare, Download, FileText, AlertTriangle, X, Paperclip, Archive, Calendar, Star, Loader2 } from 'lucide-react';
 import { Promoter, SaleRecord, SaleStatus, TicketType, KPIStats, Floor, ComplaintRecord, ComplaintStatus, ComplaintPriority, FeedbackRecord } from '../types';
 import { 
   getPromoters, getSales, getFloors, getComplaints, getFeedbacks,
@@ -12,6 +12,7 @@ import {
 
 const LeadDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'KPI' | 'COMPLAINTS'>('KPI');
+  const [isLoading, setIsLoading] = useState(true);
   
   // KPI Data
   const [promoters, setPromoters] = useState<Promoter[]>([]);
@@ -46,33 +47,7 @@ const LeadDashboard: React.FC = () => {
   const [feedbackExportStart, setFeedbackExportStart] = useState(new Date().toISOString().split('T')[0]);
   const [feedbackExportEnd, setFeedbackExportEnd] = useState(new Date().toISOString().split('T')[0]);
 
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 5000); // Live refresh
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const loadedPromoters = await getPromoters();
-      const loadedSales = await getSales();
-      const loadedFloors = await getFloors();
-      const loadedComplaints = await getComplaints();
-      const loadedFeedbacks = await getFeedbacks();
-      
-      setPromoters(loadedPromoters);
-      setSales(loadedSales);
-      setFloors(loadedFloors);
-      setComplaints(loadedComplaints.sort((a, b) => b.timestamp - a.timestamp));
-      setFeedbacks(loadedFeedbacks);
-      
-      calculateStats(loadedPromoters, loadedSales);
-    } catch (error) {
-      console.error("Error loading dashboard data", error);
-    }
-  };
-
-  const calculateStats = (currentPromoters: Promoter[], currentSales: SaleRecord[]) => {
+  const calculateStats = useCallback((currentPromoters: Promoter[], currentSales: SaleRecord[]) => {
     const verifiedSales = currentSales.filter(s => s.status === SaleStatus.VERIFIED);
     const newStats: KPIStats[] = currentPromoters.map(p => {
       const pSales = verifiedSales.filter(s => s.promoterId === p.id);
@@ -88,7 +63,37 @@ const LeadDashboard: React.FC = () => {
       };
     });
     setStats(newStats);
-  };
+  }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [loadedPromoters, loadedSales, loadedFloors, loadedComplaints, loadedFeedbacks] = await Promise.all([
+        getPromoters(),
+        getSales(),
+        getFloors(),
+        getComplaints(),
+        getFeedbacks()
+      ]);
+      
+      setPromoters(loadedPromoters);
+      setSales(loadedSales);
+      setFloors(loadedFloors);
+      setComplaints(loadedComplaints.sort((a, b) => b.timestamp - a.timestamp));
+      setFeedbacks(loadedFeedbacks);
+      
+      calculateStats(loadedPromoters, loadedSales);
+    } catch (error) {
+      console.error("Error loading dashboard data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [calculateStats]);
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 5000); // Live refresh
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   // --- Complaint Management ---
 
@@ -144,7 +149,6 @@ const LeadDashboard: React.FC = () => {
     const start = new Date(exportStart).setHours(0, 0, 0, 0);
     const end = new Date(exportEnd).setHours(23, 59, 59, 999);
     
-    // Use ALL complaints (including archived) for export
     const dataToExport = complaints.filter(c => c.timestamp >= start && c.timestamp <= end);
     
     if (dataToExport.length === 0) {
@@ -248,16 +252,22 @@ const LeadDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // --- Logic Updated for Async/Firestore ---
   const toggleFloorAssign = async (promoterId: string, floorName: string) => {
+    // Optimistic Update
     const promoter = promoters.find(p => p.id === promoterId);
     if (!promoter) return;
 
     const currentFloors = promoter.assignedFloors || [];
     const exists = currentFloors.includes(floorName);
-    let newFloors = exists ? currentFloors.filter(f => f !== floorName) : [...currentFloors, floorName];
+    const newFloors = exists ? currentFloors.filter(f => f !== floorName) : [...currentFloors, floorName];
     
+    // Update local state immediately for responsiveness
+    setPromoters(prev => prev.map(p => p.id === promoterId ? { ...p, assignedFloors: newFloors } : p));
+
+    // Persist to DB
     await updatePromoter({ ...promoter, assignedFloors: newFloors });
+    
+    // Reload to ensure sync
     loadData();
   };
 
@@ -302,6 +312,14 @@ const LeadDashboard: React.FC = () => {
   }));
 
   const visibleComplaints = complaints.filter(c => !c.isArchived);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="animate-spin text-indigo-600" size={48} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 pb-20">
