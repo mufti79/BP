@@ -140,9 +140,10 @@ const App: React.FC = () => {
         </nav>
 
         {currentRole === 'PROMOTER' && !loadingPromoters && (
-           <div className="p-4 bg-slate-800/50 border-t border-slate-800">
-             <label className="block text-xs font-medium text-slate-400 mb-2">Select BP:</label>
+           <div className="p-4 bg-slate-800/50 border-t border-slate-800" role="region" aria-label="Brand Promoter Selection">
+             <label htmlFor="bp-selector-desktop" className="block text-xs font-medium text-slate-400 mb-2">Select BP:</label>
              <select 
+               id="bp-selector-desktop"
                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-indigo-500"
                value={currentPromoterId}
                onChange={(e) => setCurrentPromoterId(e.target.value)}
@@ -183,9 +184,10 @@ const App: React.FC = () => {
          </div>
          {/* BP Selector for Mobile when Promoter role is selected */}
          {currentRole === 'PROMOTER' && !loadingPromoters && promoters.length > 0 && (
-            <div className="px-4 pb-3 border-t border-slate-800">
-               <label className="block text-xs font-medium text-slate-400 mb-1 mt-2">Select BP:</label>
+            <div className="px-4 pb-3 border-t border-slate-800" role="region" aria-label="Brand Promoter Selection">
+               <label htmlFor="bp-selector-mobile" className="block text-xs font-medium text-slate-400 mb-1 mt-2">Select BP:</label>
                <select 
+                  id="bp-selector-mobile"
                   className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-indigo-500"
                   value={currentPromoterId}
                   onChange={(e) => setCurrentPromoterId(e.target.value)}
