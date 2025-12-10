@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
-import Footer from './Footer';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -111,8 +110,6 @@ const LoginPage: React.FC<LoginPageProps> = ({
           </button>
         </form>
       </div>
-      
-      <Footer />
     </div>
   );
 };
