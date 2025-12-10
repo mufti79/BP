@@ -140,9 +140,10 @@ const App: React.FC = () => {
         </nav>
 
         {currentRole === 'PROMOTER' && !loadingPromoters && (
-           <div className="p-4 bg-slate-800/50 border-t border-slate-800">
-             <label className="block text-xs font-medium text-slate-400 mb-2">Select BP:</label>
+           <div className="p-4 bg-slate-800/50 border-t border-slate-800" role="region" aria-label="Select BP">
+             <label htmlFor="bp-selector-desktop" className="block text-xs font-medium text-slate-400 mb-2">Select BP:</label>
              <select 
+               id="bp-selector-desktop"
                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-indigo-500"
                value={currentPromoterId}
                onChange={(e) => setCurrentPromoterId(e.target.value)}
@@ -164,21 +165,37 @@ const App: React.FC = () => {
       </aside>
 
       {/* Mobile Nav Header (Visible only on small screens) */}
-      <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-md">
-         <div className="font-bold flex items-center gap-2">
-            <span>KPI Tracker</span>
-            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+      <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-50 shadow-md">
+         <div className="p-4 flex justify-between items-center">
+            <div className="font-bold flex items-center gap-2">
+               <span>KPI Tracker</span>
+               <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+            </div>
+            <select 
+               value={currentRole} 
+               onChange={(e) => setCurrentRole(e.target.value as UserRole)}
+               className="bg-slate-800 text-sm rounded p-1 outline-none border border-slate-700"
+             >
+               <option value="LEAD">Lead</option>
+               <option value="PROMOTER">Promoter</option>
+               <option value="VERIFIER">Verifier</option>
+               <option value="CUSTOMER_SERVICE">CS</option>
+            </select>
          </div>
-         <select 
-            value={currentRole} 
-            onChange={(e) => setCurrentRole(e.target.value as UserRole)}
-            className="bg-slate-800 text-sm rounded p-1 outline-none border border-slate-700"
-          >
-            <option value="LEAD">Lead</option>
-            <option value="PROMOTER">Promoter</option>
-            <option value="VERIFIER">Verifier</option>
-            <option value="CUSTOMER_SERVICE">CS</option>
-         </select>
+         {/* BP Selector for Mobile when Promoter role is selected */}
+         {currentRole === 'PROMOTER' && !loadingPromoters && promoters.length > 0 && (
+            <div className="px-4 pb-3 border-t border-slate-800" role="region" aria-label="Select BP">
+               <label htmlFor="bp-selector-mobile" className="block text-xs font-medium text-slate-400 mb-1 mt-2">Select BP:</label>
+               <select 
+                  id="bp-selector-mobile"
+                  className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-indigo-500"
+                  value={currentPromoterId}
+                  onChange={(e) => setCurrentPromoterId(e.target.value)}
+               >
+                  {promoters.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+               </select>
+            </div>
+         )}
       </div>
 
       {/* Main Content Area */}
