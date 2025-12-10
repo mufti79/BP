@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, User, ArrowRight, ShieldCheck, Info } from 'lucide-react';
+import { Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -39,7 +39,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
         onLogin();
       }
       else {
-        setError(`Invalid credentials. Try: ${demoCredentials}`);
+        setError('Invalid credentials.');
         setIsLoading(false);
       }
     }, 800);
@@ -109,13 +109,6 @@ const LoginPage: React.FC<LoginPageProps> = ({
             )}
           </button>
         </form>
-        
-        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
-                <Info size={14} className="text-indigo-500" />
-                <span>Demo Access: <strong>{demoCredentials}</strong></span>
-            </div>
-        </div>
       </div>
     </div>
   );
