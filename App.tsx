@@ -8,6 +8,7 @@ import PromoterView from './components/PromoterView';
 import SalesVerifier from './components/SalesVerifier';
 import CustomerServiceView from './components/CustomerServiceView';
 import LoginPage from './components/LoginPage';
+import Footer from './components/Footer';
 
 const App: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<UserRole>('LEAD');
@@ -201,6 +202,8 @@ const App: React.FC = () => {
         <div className="p-2 md:p-6 min-h-[calc(100vh-80px)]">
           {renderContent()}
         </div>
+        
+        <Footer />
       </main>
     </div>
   );
