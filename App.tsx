@@ -165,11 +165,14 @@ const App: React.FC = () => {
 
       {/* Mobile Nav Header (Visible only on small screens) */}
       <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center shadow-md">
-         <div className="font-bold flex items-center gap-2">
-            <span>KPI Tracker</span>
-            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-         </div>
-         <select 
+        <div className="font-bold flex items-center gap-2">
+          <span>KPI Tracker</span>
+          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Role Selector (Mobile) */}
+          <select 
             value={currentRole} 
             onChange={(e) => setCurrentRole(e.target.value as UserRole)}
             className="bg-slate-800 text-sm rounded p-1 outline-none border border-slate-700"
@@ -178,7 +181,24 @@ const App: React.FC = () => {
             <option value="PROMOTER">Promoter</option>
             <option value="VERIFIER">Verifier</option>
             <option value="CUSTOMER_SERVICE">CS</option>
-         </select>
+          </select>
+
+          {/* BP Selector (Mobile; visible only for Promoter role) */}
+          {currentRole === 'PROMOTER' && !loadingPromoters && (
+            <select
+              aria-label="Select BP"
+              value={currentPromoterId}
+              onChange={(e) => setCurrentPromoterId(e.target.value)}
+              className="bg-slate-800 text-sm rounded p-1 outline-none border border-slate-700 max-w-[50vw]"
+            >
+              {promoters.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {/* Main Content Area */}
